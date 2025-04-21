@@ -78,3 +78,35 @@ function finishQuiz() {
     window.location.href = 'thankyou.html';
   }, 1500);
 }
+
+function showFeedback(form, correctAnswers) {
+  for (const [key, correct] of Object.entries(correctAnswers)) {
+    const options = form.querySelectorAll(`[name='${key}']`);
+    options.forEach(opt => {
+      const label = opt.parentElement;
+      if (opt.value === correct) {
+        label.style.color = 'green';
+        label.style.fontWeight = 'bold';
+      } else if (opt.checked && opt.value !== correct) {
+        label.style.color = 'red';
+        label.style.fontWeight = 'bold';
+      }
+    });
+  }
+}
+
+function finishQuiz() {
+  const form = document.getElementById("motion-quiz");
+  const correctAnswers = {
+    'm1': 'c', 'm2': 'd', 'm4': 'true', 'm5': 'c', 'm6': 'b',
+    'm7': 'b', 'm8': 'true', 'm9': 'b', 'm10': 'c', 'm11': 'b',
+    'm12': 'b', 'm13': 'true', 'm14': 'b', 'm15': 'b', 'm16': 'b'
+  };
+  const result = calculateScore(form);
+  showFeedback(form, correctAnswers);
+  alert(`You scored ${result.score} out of ${result.total}`);
+  exportResults("Motion Quiz", form);
+  setTimeout(() => {
+    window.location.href = 'thankyou.html';
+  }, 3000);
+}
