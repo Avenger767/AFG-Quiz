@@ -6,107 +6,113 @@ document.addEventListener('DOMContentLoaded', function () {
   if (motionForm) {
     motionForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      exportResults('Motion Quiz', motionForm);
+      finishQuiz();
     });
   }
 
   if (mpicForm) {
     mpicForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      exportResults('MPIC Quiz', mpicForm);
+      finishInterfaceQuiz();
     });
   }
 
-  function exportResults(quizTitle, form) {
-    const username = localStorage.getItem('quizUser') || 'Anonymous';
-    let csvContent = `Quiz Title,${quizTitle}\nUser,${username}\n\n`;
-    const formData = new FormData(form);
-    const questions = new Set();
+  function calculateScore(form, correctAnswers) {
+    let score = 0;
+    let total = 0;
 
-    for (const [name, value] of formData.entries()) {
-      if (!questions.has(name)) {
-        questions.add(name);
-        csvContent += `${name},${value}\n`;
-      }
-    }
+    for (const [key, correct] of Object.entries(correctAnswers)) {
+      const elements = form.querySelectorAll(`[name='${key}']`);
+      const selected = form.querySelector(`[name='${key}']:checked`);
+      const selectedVals = [...form.querySelectorAll(`[name='${key}']:checked`)].map(x => x.value);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.setAttribute('href', URL.createObjectURL(blob));
-    link.setAttribute('download', `${quizTitle.replace(/\s+/g, '_')}_results.csv`);
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    alert('Your answers have been downloaded.');
-  }
-});
-
-function finishQuiz() {
-  exportResults("Motion Quiz", document.getElementById("motion-quiz"));
-  setTimeout(() => {
-    window.location.href = 'thankyou.html';
-  }, 1000);
-}
-
-function calculateScore(form) {
-  const correctAnswers = {
-    'm1': 'c', 'm2': 'd', 'm4': 'true', 'm5': 'c', 'm6': 'b',
-    'm7': 'b', 'm8': 'true', 'm9': 'b', 'm10': 'c', 'm11': 'b',
-    'm12': 'b', 'm13': 'true', 'm14': 'b', 'm15': 'b', 'm16': 'b'
-  };
-  let score = 0;
-  let total = 0;
-  const formData = new FormData(form);
-  for (const [name, value] of formData.entries()) {
-    if (name in correctAnswers) {
+      if (!elements.length) continue;
       total++;
-      if (value === correctAnswers[name]) {
+
+      if (Array.isArray(correct)) {
+        if (selectedVals.sort().toString() === correct.sort().toString()) {
+          score++;
+        }
+      } else if (selected && selected.value === correct) {
         score++;
       }
     }
+
+    return { score, total };
   }
-  return { score, total };
-}
 
-function finishQuiz() {
-  const form = document.getElementById("motion-quiz");
-  const result = calculateScore(form);
-  alert(`You scored ${result.score} out of ${result.total}`);
-  exportResults("Motion Quiz", form);
-  setTimeout(() => {
-    window.location.href = 'thankyou.html';
-  }, 1500);
-}
+  function showFeedback(form, correctAnswers) {
+    for (const [key, correct] of Object.entries(correctAnswers)) {
+      const options = form.querySelectorAll(`[name='${key}']`);
+      options.forEach(opt => {
+        const label = opt.parentElement;
+        if (Array.isArray(correct)) {
+          const selectedVals = [...form.querySelectorAll(`[name='${key}']:checked`)].map(x => x.value);
+          if (correct.includes(opt.value)) {
+            label.style.color = 'green';
+            label.style.fontWeight = 'bold';
+          } else if (opt.checked && !correct.includes(opt.value)) {
+            label.style.color = 'red';
+            label.style.fontWeight = 'bold';
+          }
+        } else {
+          if (opt.value === correct) {
+            label.style.color = 'green';
+            label.style.fontWeight = 'bold';
+          } else if (opt.checked && opt.value !== correct) {
+            label.style.color = 'red';
+            label.style.fontWeight = 'bold';
+          }
+        }
+      });
+    }
+  }
 
-function showFeedback(form, correctAnswers) {
-  for (const [key, correct] of Object.entries(correctAnswers)) {
-    const options = form.querySelectorAll(`[name='${key}']`);
-    options.forEach(opt => {
-      const label = opt.parentElement;
-      if (opt.value === correct) {
-        label.style.color = 'green';
-        label.style.fontWeight = 'bold';
-      } else if (opt.checked && opt.value !== correct) {
-        label.style.color = 'red';
-        label.style.fontWeight = 'bold';
+  window.finishInterfaceQuiz = function () {
+    const form = document.getElementById("mpic-quiz");
+    const correctAnswers = {
+      'q1': '0', 'q2': '0', 'q3': '1', 'q4': '1', 'q5': '0',
+      'q6': '0', 'q7': '2', 'q8': '0', 'q9': '1', 'q10': '2',
+      'q11': '3', 'q12': ['0','1','2','3','4']
+    };
+
+    const result = calculateScore(form, correctAnswers);
+    localStorage.setItem('interfaceScore', result.score);
+    localStorage.setItem('interfaceTotal', result.total);
+
+    showFeedback(form, correctAnswers);
+
+    if (result.score === result.total) {
+      localStorage.setItem('interfaceUnlocked', 'true');
+      setTimeout(() => window.location.href = 'motion.html', 1500);
+    } else {
+      alert('Incorrect answers detected. Restarting Interface Quiz now...');
+      setTimeout(() => window.location.href = 'mpic.html', 1500);
+    }
+  }
+
+  window.finishQuiz = function () {
+    const form = document.getElementById("motion-quiz");
+    const correctAnswers = {
+      'm1': 'c', 'm2': 'c', 'm4': 'true', 'm5': 'c', 'm6': 'b',
+      'm7': 'b', 'm8': 'true', 'm9': 'b', 'm10': 'c', 'm11': 'b',
+      'm12': 'b', 'm13': 'true', 'm14': 'b', 'm15': 'b', 'm16': 'b'
+    };
+    const result = calculateScore(form, correctAnswers);
+    localStorage.setItem('motionScore', result.score);
+    localStorage.setItem('motionTotal', result.total);
+    showFeedback(form, correctAnswers);
+    setTimeout(() => {
+      window.location.href = 'summary.html';
+    }, 3000);
+  }
+});
+
+    if (typeof finishQuiz === 'function') {
+      const oldFinishQuiz = finishQuiz;
+      finishQuiz = function () {
+        oldFinishQuiz();
+        setTimeout(() => window.location.href = 'summary.html', 1500);
       }
-    });
-  }
-}
-
-function finishQuiz() {
-  const form = document.getElementById("motion-quiz");
-  const correctAnswers = {
-    'm1': 'c', 'm2': 'd', 'm4': 'true', 'm5': 'c', 'm6': 'b',
-    'm7': 'b', 'm8': 'true', 'm9': 'b', 'm10': 'c', 'm11': 'b',
-    'm12': 'b', 'm13': 'true', 'm14': 'b', 'm15': 'b', 'm16': 'b'
-  };
-  const result = calculateScore(form);
-  showFeedback(form, correctAnswers);
-  alert(`You scored ${result.score} out of ${result.total}`);
-  exportResults("Motion Quiz", form);
-  setTimeout(() => {
-    window.location.href = 'thankyou.html';
-  }, 3000);
-}
+    }
+    

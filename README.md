@@ -1,1 +1,1 @@
-# AFG-Quiz
+# SimTechQuiz2
